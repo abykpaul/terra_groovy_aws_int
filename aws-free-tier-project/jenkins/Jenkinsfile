@@ -35,7 +35,7 @@ pipeline {
                             dir(tfDir) {
                                 echo "🔧 Initializing Terraform for ${envName}"
 
-                                bat 'terraform init'
+                                bat 'terraform init -reconfigure'
                                 bat 'terraform validate'
 
                                 if (ACTION_TYPE == "apply") {
