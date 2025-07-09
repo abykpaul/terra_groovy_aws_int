@@ -5,16 +5,23 @@ pipeline {
         choice(
             name: 'TARGET_ENV',
             choices: ['dev', 'prod'],
-            description: 'Choose which environment to deploy'
+            description: 'Choose which environment to target'
+        )
+
+        choice(
+            name: 'ACTION',
+            choices: ['apply', 'destroy'],
+            description: 'Choose the Terraform action: apply or destroy'
         )
     }
 
     environment {
         ENVIRONMENT = "${params.TARGET_ENV}"
+        ACTION_TYPE = "${params.ACTION}"
     }
 
     stages {
-        stage('Terraform Free-Tier Deploy') {
+        stage('Terraform Free-Tier Deployment or Destroy') {
             steps {
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']
@@ -24,33 +31,45 @@ pipeline {
                         def tfDir = "aws-free-tier-project/terraform/${envName}"
                         def tfVars = "${envName}.tfvars"
 
-                        stage("🔁 Apply Terraform - ${envName}") {
+                        stage("🔁 Terraform ${ACTION_TYPE.toUpperCase()} - ${envName}") {
                             dir(tfDir) {
                                 echo "🔧 Initializing Terraform for ${envName}"
 
                                 bat 'terraform init'
                                 bat 'terraform validate'
-                                bat "terraform plan -var-file=${tfVars}"
-                                bat "terraform apply -auto-approve -var-file=${tfVars}"
+
+                                if (ACTION_TYPE == "apply") {
+                                    bat "terraform plan -var-file=${tfVars}"
+                                    bat "terraform apply -auto-approve -var-file=${tfVars}"
+                                } else if (ACTION_TYPE == "destroy") {
+                                    bat "terraform plan -destroy -var-file=${tfVars}"
+                                    bat "terraform destroy -auto-approve -var-file=${tfVars}"
+                                } else {
+                                    error "❌ Invalid ACTION selected"
+                                }
                             }
 
-                            if (envName == "prod") {
-                                echo "🔐 PROD - Notify admin"
+                            if (ACTION_TYPE == "apply") {
+                                if (envName == "prod") {
+                                    echo "🔐 PROD - Notify admin"
+                                } else {
+                                    echo "🧪 DEV - Enable auto-tests"
+                                }
+
+                                def retries = 0
+                                def healthy = false
+                                while (!healthy && retries < 3) {
+                                    echo "Checking service status... attempt ${retries + 1}"
+                                    healthy = true
+                                    sleep 2
+                                    retries++
+                                }
+
+                                if (!healthy) {
+                                    error "❌ Service not healthy in ${envName}"
+                                }
                             } else {
-                                echo "🧪 DEV - Enable auto-tests"
-                            }
-
-                            def retries = 0
-                            def healthy = false
-                            while (!healthy && retries < 3) {
-                                echo "Checking service status... attempt ${retries + 1}"
-                                healthy = true
-                                sleep 2
-                                retries++
-                            }
-
-                            if (!healthy) {
-                                error "❌ Service not healthy in ${envName}"
+                                echo "💥 Destroy completed for ${envName}"
                             }
                         }
                     }
