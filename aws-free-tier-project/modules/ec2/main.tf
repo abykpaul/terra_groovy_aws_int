@@ -6,13 +6,13 @@ resource "aws_instance" "web" {
   key_name               = var.key_name
   associate_public_ip_address = true
 
-  user_data = <<-EOF
+user_data = <<-EOF
               #!/bin/bash
-              sudo apt-get update -y
-              sudo apt-get install apache2 -y
+              yum update -y
+              yum install -y httpd
               echo "<h1>Welcome to ${var.environment} instance</h1>" > /var/www/html/index.html
-              sudo systemctl start apache2
-              sudo systemctl enable apache2
+              systemctl start httpd
+              systemctl enable httpd
             EOF
   tags = {
     Name        = "${var.name}-ec2"
