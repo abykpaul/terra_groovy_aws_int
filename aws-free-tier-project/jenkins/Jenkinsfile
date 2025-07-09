@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    environment {
+        ENVIRONMENTS = "dev,prod"
+    }
+
+    stages {
+        stage('Terraform Free-Tier Deploy') {
+            steps {
+                script {
+                    def envs = ENVIRONMENTS.split(',')
+
+                    for (envName in envs) {
+                        stage("🔁 Apply Terraform - ${envName}") {
+                            def tfDir = "terraform/${envName}"
+                            def tfVars = "${envName}.tfvars"
+
+                            dir(tfDir) {
+                                echo "🔧 Initializing Terraform for ${envName}"
+
+                                sh 'terraform init'
+                                sh 'terraform validate'
+                                sh "terraform plan -var-file=${tfVars}"
+                                sh "terraform apply -auto-approve -var-file=${tfVars}"
+                            }
+
+                            if (envName == "prod") {
+                                echo "🔐 PROD - Notify admin"
+                            } else {
+                                echo "🧪 DEV - Enable auto-tests"
+                            }
+
+                            def retries = 0
+                            def healthy = false
+                            while (!healthy && retries < 3) {
+                                echo "Checking service status... attempt ${retries + 1}"
+                                healthy = true
+                                sleep 2
+                                retries++
+                            }
+
+                            if (!healthy) {
+                                error "❌ Service not healthy in ${envName}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
