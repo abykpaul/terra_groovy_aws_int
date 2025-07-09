@@ -40,9 +40,8 @@ pipeline {
                     dir(tfDir) {
                         bat "terraform plan -var-file=${tfVars}"
 
-                        if (params.TARGET_ENV == 'prod') {
-                            input message: "Approve production deployment?", ok: "Proceed"
-                        }
+                        // ✅ Manual input for both dev and prod
+                        input message: "🟢 Approve apply for ${params.TARGET_ENV}?", ok: "Apply"
 
                         bat "terraform apply -auto-approve -var-file=${tfVars}"
                         echo "✅ Apply completed for ${params.TARGET_ENV}"
@@ -63,9 +62,8 @@ pipeline {
                     dir(tfDir) {
                         bat "terraform plan -destroy -var-file=${tfVars}"
 
-                        if (params.TARGET_ENV == 'prod') {
-                            input message: "⚠️ Approve destruction of production?", ok: "Destroy"
-                        }
+                        // ✅ Manual input for both dev and prod
+                        input message: "⚠️ Approve destroy for ${params.TARGET_ENV}?", ok: "Destroy"
 
                         bat "terraform destroy -auto-approve -var-file=${tfVars}"
                         echo "💥 Destroy completed for ${params.TARGET_ENV}"
