@@ -19,10 +19,10 @@ pipeline {
                             dir(tfDir) {
                                 echo "🔧 Initializing Terraform for ${envName}"
 
-                                sh 'terraform init'
-                                sh 'terraform validate'
-                                sh "terraform plan -var-file=${tfVars}"
-                                sh "terraform apply -auto-approve -var-file=${tfVars}"
+                                bat 'terraform init'
+                                bat 'terraform validate'
+                                bat 'terraform plan -var-file=${tfVars}'
+                                bat 'terraform apply -auto-approve -var-file=${tfVars}'
                             }
 
                             if (envName == "prod") {
