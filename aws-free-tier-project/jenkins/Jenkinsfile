@@ -15,7 +15,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        def tfDir = "terraform/${params.TARGET_ENV}"
+                        def tfDir = "aws-free-tier-project/terraform/${params.TARGET_ENV}"
                         def tfVars = "${params.TARGET_ENV}.tfvars"
 
                         dir(tfDir) {
