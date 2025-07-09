@@ -9,7 +9,7 @@ resource "aws_instance" "web" {
               #!/bin/bash
               sudo apt-get update -y
               sudo apt-get install apache2 -y
-              echo "<h1>Welcome to ${var.env} instance</h1>" > /var/www/html/index.html
+              echo "<h1>Welcome to ${var.environment} instance</h1>" > /var/www/html/index.html
               sudo systemctl start apache2
               sudo systemctl enable apache2
             EOF
