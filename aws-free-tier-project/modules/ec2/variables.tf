@@ -5,7 +5,7 @@ variable "security_group_id" {}
 variable "key_name" {}
 variable "name" {}
 variable "environment" {}
-variable "env" {
+variable "environment" {
   description = "Environment name (dev/prod)"
   type        = string
 }
