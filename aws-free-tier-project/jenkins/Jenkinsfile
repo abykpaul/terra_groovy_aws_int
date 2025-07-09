@@ -21,8 +21,8 @@ pipeline {
 
                                 bat 'terraform init'
                                 bat 'terraform validate'
-                                bat 'terraform plan -var-file=${tfVars}'
-                                bat 'terraform apply -auto-approve -var-file=${tfVars}'
+                                bat "terraform plan -var-file=${tfVars}"
+                                bat "terraform apply -auto-approve -var-file=${tfVars}"
                             }
 
                             if (envName == "prod") {
