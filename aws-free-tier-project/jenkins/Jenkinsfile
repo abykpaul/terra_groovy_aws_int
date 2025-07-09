@@ -1,104 +1,24 @@
+@Library('jenkins-shared-library-demo') _
+
 pipeline {
     agent any
 
     parameters {
-        choice(name: 'TARGET_ENV', choices: ['dev', 'prod'], description: 'Select the environment to deploy')
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Choose Terraform action to run')
-    }
-
-    environment {
-        AWS_REGION = "ap-south-1"
+        choice(name: 'TARGET_ENV', choices: ['dev', 'prod'], description: 'Select the environment')
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform action')
     }
 
     stages {
-        stage('Terraform Init & Validate') {
+        stage('Terraform Deploy (Shared Library)') {
             steps {
                 script {
-                    def tfDir = "aws-free-tier-project/terraform/${params.TARGET_ENV}"
-                    def tfVars = "${params.TARGET_ENV}.tfvars"
-
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-creds'
-                    ]]) {
-                        withEnv([
-                            "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
-                            "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
-                            "AWS_DEFAULT_REGION=${env.AWS_REGION}"
-                        ]) {
-                            dir(tfDir) {
-                                echo "🔧 Initializing Terraform for ${params.TARGET_ENV}"
-                                bat "terraform init -reconfigure"
-                                bat "terraform validate"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-            steps {
-                script {
-                    def tfDir = "aws-free-tier-project/terraform/${params.TARGET_ENV}"
-                    def tfVars = "${params.TARGET_ENV}.tfvars"
-
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-creds'
-                    ]]) {
-                        withEnv([
-                            "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
-                            "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
-                            "AWS_DEFAULT_REGION=${env.AWS_REGION}"
-                        ]) {
-                            dir(tfDir) {
-                                bat "terraform plan -var-file=${tfVars}"
-
-                                // ✅ Manual approval for all environments
-                                input message: "🟢 Approve apply for ${params.TARGET_ENV}?", ok: "Apply"
-
-                                bat "terraform apply -auto-approve -var-file=${tfVars}"
-                                echo "✅ Apply completed for ${params.TARGET_ENV}"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Destroy') {
-            when {
-                expression { params.ACTION == 'destroy' }
-            }
-            steps {
-                script {
-                    def tfDir = "aws-free-tier-project/terraform/${params.TARGET_ENV}"
-                    def tfVars = "${params.TARGET_ENV}.tfvars"
-
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-creds'
-                    ]]) {
-                        withEnv([
-                            "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
-                            "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
-                            "AWS_DEFAULT_REGION=${env.AWS_REGION}"
-                        ]) {
-                            dir(tfDir) {
-                                bat "terraform plan -destroy -var-file=${tfVars}"
-
-                                // ✅ Manual approval for all environments
-                                input message: "⚠️ Approve destroy for ${params.TARGET_ENV}?", ok: "Destroy"
-
-                                bat "terraform destroy -auto-approve -var-file=${tfVars}"
-                                echo "💥 Destroy completed for ${params.TARGET_ENV}"
-                            }
-                        }
-                    }
+                    terraformPipeline(
+                        env: params.TARGET_ENV,
+                        action: params.ACTION,
+                        credId: 'aws-ecr-creds',
+                        dir: "aws-free-tier-project/terraform/${params.TARGET_ENV}",
+                        tfvars: "${params.TARGET_ENV}.tfvars"
+                    )
                 }
             }
         }
