@@ -13,7 +13,7 @@ pipeline {
 
                     for (envName in envs) {
                         stage("🔁 Apply Terraform - ${envName}") {
-                            def tfDir = "terraform/${envName}"
+                            def tfDir = "aws-free-tier-project/terraform/${envName}"
                             def tfVars = "${envName}.tfvars"
 
                             dir(tfDir) {
