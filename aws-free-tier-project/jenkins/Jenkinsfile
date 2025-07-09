@@ -1,21 +1,30 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(
+            name: 'TARGET_ENV',
+            choices: ['dev', 'prod'],
+            description: 'Choose which environment to deploy'
+        )
+    }
+
     environment {
-        ENVIRONMENTS = "dev,prod"
+        ENVIRONMENT = "${params.TARGET_ENV}"
     }
 
     stages {
         stage('Terraform Free-Tier Deploy') {
             steps {
-                script {
-                    def envs = ENVIRONMENTS.split(',')
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']
+                ]) {
+                    script {
+                        def envName = ENVIRONMENT
+                        def tfDir = "aws-free-tier-project/terraform/${envName}"
+                        def tfVars = "${envName}.tfvars"
 
-                    for (envName in envs) {
                         stage("🔁 Apply Terraform - ${envName}") {
-                            def tfDir = "aws-free-tier-project/terraform/${envName}"
-                            def tfVars = "${envName}.tfvars"
-
                             dir(tfDir) {
                                 echo "🔧 Initializing Terraform for ${envName}"
 
