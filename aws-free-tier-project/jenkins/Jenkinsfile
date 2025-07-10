@@ -4,19 +4,20 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform action')
-        booleanParam(name: 'DEPLOY_DEV', defaultValue: true, description: 'Deploy dev environment?')
-        booleanParam(name: 'DEPLOY_PROD', defaultValue: false, description: 'Deploy prod environment?')
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform action (apply/destroy)')
+    }
+
+    options {
+        timeout(time: 20, unit: 'MINUTES') // Whole pipeline timeout
     }
 
     stages {
-        stage('Terraform Deploy (Parallel)') {
-            steps {
-                script {
-                    def jobs = [:]
-
-                    if (params.DEPLOY_DEV) {
-                        jobs["Dev"] = {
+        stage('Terraform Multi-Environment Deploy') {
+            parallel {
+                stage('Dev Environment') {
+                    steps {
+                        script {
+                            echo "🚀 Starting Terraform for DEV..."
                             terraformPipeline(
                                 env: 'dev',
                                 action: params.ACTION,
@@ -26,9 +27,12 @@ pipeline {
                             )
                         }
                     }
+                }
 
-                    if (params.DEPLOY_PROD) {
-                        jobs["Prod"] = {
+                stage('Prod Environment') {
+                    steps {
+                        script {
+                            echo "🚀 Starting Terraform for PROD..."
                             terraformPipeline(
                                 env: 'prod',
                                 action: params.ACTION,
@@ -38,10 +42,21 @@ pipeline {
                             )
                         }
                     }
-
-                    parallel jobs
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo "🧹 Cleaning workspace..."
+            cleanWs()
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+        success {
+            echo "✅ All environments deployed successfully!"
         }
     }
 }
