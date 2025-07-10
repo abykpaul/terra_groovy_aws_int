@@ -4,44 +4,48 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform action (apply/destroy)')
-    }
-
-    options {
-        timeout(time: 20, unit: 'MINUTES') // Whole pipeline timeout
+        choice(name: 'TARGET_ENV', choices: ['dev', 'prod', 'all'], description: 'Choose environment')
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform Action')
     }
 
     stages {
-        stage('Terraform Multi-Environment Deploy') {
-            parallel {
-                stage('Dev Environment') {
-                    steps {
-                        script {
-                            echo "🚀 Starting Terraform for DEV..."
-                            terraformPipeline(
-                                env: 'dev',
-                                action: params.ACTION,
-                                credId: 'aws-ecr-creds',
-                                dir: "aws-free-tier-project/terraform/dev",
-                                tfvars: "dev.tfvars"
-                            )
-                        }
-                    }
-                }
 
-                stage('Prod Environment') {
-                    steps {
-                        script {
-                            echo "🚀 Starting Terraform for PROD..."
-                            terraformPipeline(
-                                env: 'prod',
-                                action: params.ACTION,
-                                credId: 'aws-ecr-creds',
-                                dir: "aws-free-tier-project/terraform/prod",
-                                tfvars: "prod.tfvars"
-                            )
-                        }
-                    }
+        stage('Deploy Dev Environment') {
+            when {
+                anyOf {
+                    expression { params.TARGET_ENV == 'dev' }
+                    expression { params.TARGET_ENV == 'all' }
+                }
+            }
+            steps {
+                script {
+                    terraformPipeline(
+                        env: 'dev',
+                        action: params.ACTION,
+                        credId: 'aws-ecr-creds',
+                        dir: "aws-free-tier-project/terraform/dev",
+                        tfvars: "dev.tfvars"
+                    )
+                }
+            }
+        }
+
+        stage('Deploy Prod Environment') {
+            when {
+                anyOf {
+                    expression { params.TARGET_ENV == 'prod' }
+                    expression { params.TARGET_ENV == 'all' }
+                }
+            }
+            steps {
+                script {
+                    terraformPipeline(
+                        env: 'prod',
+                        action: params.ACTION,
+                        credId: 'aws-ecr-creds',
+                        dir: "aws-free-tier-project/terraform/prod",
+                        tfvars: "prod.tfvars"
+                    )
                 }
             }
         }
@@ -49,14 +53,8 @@ pipeline {
 
     post {
         always {
-            echo "🧹 Cleaning workspace..."
+            echo '🧹 Cleaning workspace...'
             cleanWs()
-        }
-        failure {
-            echo "❌ Pipeline failed!"
-        }
-        success {
-            echo "✅ All environments deployed successfully!"
         }
     }
 }
