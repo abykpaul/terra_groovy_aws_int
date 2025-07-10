@@ -4,21 +4,42 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'TARGET_ENV', choices: ['dev', 'prod'], description: 'Select the environment')
         choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform action')
+        booleanParam(name: 'DEPLOY_DEV', defaultValue: true, description: 'Deploy dev environment?')
+        booleanParam(name: 'DEPLOY_PROD', defaultValue: false, description: 'Deploy prod environment?')
     }
 
     stages {
-        stage('Terraform Deploy (Shared Library)') {
+        stage('Terraform Deploy (Parallel)') {
             steps {
                 script {
-                    terraformPipeline(
-                        env: params.TARGET_ENV,
-                        action: params.ACTION,
-                        credId: 'aws-ecr-creds',
-                        dir: "aws-free-tier-project/terraform/${params.TARGET_ENV}",
-                        tfvars: "${params.TARGET_ENV}.tfvars"
-                    )
+                    def jobs = [:]
+
+                    if (params.DEPLOY_DEV) {
+                        jobs["Dev"] = {
+                            terraformPipeline(
+                                env: 'dev',
+                                action: params.ACTION,
+                                credId: 'aws-ecr-creds',
+                                dir: "aws-free-tier-project/terraform/dev",
+                                tfvars: "dev.tfvars"
+                            )
+                        }
+                    }
+
+                    if (params.DEPLOY_PROD) {
+                        jobs["Prod"] = {
+                            terraformPipeline(
+                                env: 'prod',
+                                action: params.ACTION,
+                                credId: 'aws-ecr-creds',
+                                dir: "aws-free-tier-project/terraform/prod",
+                                tfvars: "prod.tfvars"
+                            )
+                        }
+                    }
+
+                    parallel jobs
                 }
             }
         }
